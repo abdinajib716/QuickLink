@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "rewrites": [
+    { "source": "/api/websocket", "destination": "/api/websocket" }
+  ],
+  "functions": {
+    "api/websocket": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "env": {
+    "NEXT_PUBLIC_WEBSOCKET_URL": "wss://quick-link.vercel.app/api/websocket"
+  },
+  "crons": [
+    {
+      "path": "/api/cleanup",
+      "schedule": "0 0 * * *"
+    }
+  ]
+} 

@@ -1,3 +1,5 @@
+import { getWebSocketUrl } from './get-websocket-url';
+
 type WebSocketEvent = {
   type: 'link_added' | 'link_deleted';
   payload: any;
@@ -45,7 +47,7 @@ class WebSocketService {
     }
 
     this.isConnecting = true;
-    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/websocket`;
+    const wsUrl = getWebSocketUrl();
     console.log('Attempting WebSocket connection to:', wsUrl);
 
     try {

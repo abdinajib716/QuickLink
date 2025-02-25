@@ -1,48 +1,28 @@
 import { NextRequest } from 'next/server'
 import { Duplex } from 'stream'
 import Redis from 'ioredis'
+import { IncomingMessage } from 'http'
 import { WebSocketHandler } from '@/lib/websocket-server'
 import { getRedisClient } from './redis-helper'
 import { logger } from './logger'
 
 // This is a more complete adapter to make Next.js WebSocket work with the ws library
-export function createWebSocketAdapter(req: NextRequest, socket: Duplex) {
-  // Create a compatibility layer that simulates an HTTP IncomingMessage
-  return {
-    // Headers as a plain object
+export function createWebSocketAdapter(req: NextRequest, socket: Duplex): IncomingMessage {
+  // Create a basic adapter with the minimum required properties
+  const adapter = {
     headers: Object.fromEntries(req.headers.entries()),
-    
-    // Request method
     method: req.method,
-    
-    // Request URL
     url: req.url,
-    
-    // Socket reference
     socket,
-    
-    // Connection (same as socket for ws library)
     connection: socket,
-    
-    // Add common properties needed by ws
+    // Add these properties to satisfy IncomingMessage
     httpVersionMajor: 1,
     httpVersionMinor: 1,
     httpVersion: '1.1',
-    
-    // Headers access methods
-    getHeader: (name: string) => req.headers.get(name),
-    getHeaders: () => Object.fromEntries(req.headers.entries()),
-    
-    // Additional properties
-    aborted: false,
-    complete: true,
-    
-    // Add stream-like methods that ws might expect
-    on: socket.on.bind(socket),
-    once: socket.once.bind(socket),
-    emit: socket.emit.bind(socket),
-    removeListener: socket.removeListener?.bind(socket),
-  }
+    // Add other required properties
+  } as IncomingMessage;
+  
+  return adapter;
 }
 
 export class RedisWebSocketAdapter implements WebSocketHandler {

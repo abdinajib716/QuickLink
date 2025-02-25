@@ -1,5 +1,52 @@
 import Redis from 'ioredis';
-import { logger } from './logger';
+import { logger } from '@/lib/logger';
+
+// In-memory fallback for environments without Redis
+class MemoryStore {
+  private store = new Map<string, string>();
+
+  async set(key: string, value: string): Promise<'OK'> {
+    this.store.set(key, value);
+    return 'OK';
+  }
+
+  async get(key: string): Promise<string | null> {
+    return this.store.get(key) || null;
+  }
+
+  async del(key: string): Promise<number> {
+    const had = this.store.has(key);
+    this.store.delete(key);
+    return had ? 1 : 0;
+  }
+
+  async publish(channel: string, message: string): Promise<number> {
+    logger.info(`[MemoryStore] Publishing to ${channel}: ${message}`);
+    return 0;
+  }
+
+  async subscribe(channel: string): Promise<void> {
+    logger.info(`[MemoryStore] Subscribed to ${channel}`);
+  }
+}
+
+// Either use Redis or fallback to memory store
+let redisClient: Redis | MemoryStore;
+
+if (process.env.REDIS_URL) {
+  try {
+    redisClient = new Redis(process.env.REDIS_URL);
+    logger.info('Redis client initialized');
+  } catch (error) {
+    logger.error('Failed to initialize Redis client, using memory store', error);
+    redisClient = new MemoryStore();
+  }
+} else {
+  logger.info('No REDIS_URL provided, using memory store');
+  redisClient = new MemoryStore();
+}
+
+export { redisClient };
 
 // Global Redis client instance for connection pooling
 let globalRedisClient: Redis | null = null;
@@ -117,4 +164,7 @@ if (typeof process !== 'undefined') {
       }
     });
   });
-} 
+}
+
+// Consider using only the MemoryStore implementation for simplicity
+// Especially if you're not using advanced Redis features 

@@ -4,6 +4,7 @@ import { Duplex } from 'stream';
 import { WebSocketServer as WSServer } from 'ws';
 import { RedisWebSocketAdapter } from './websocket-adapter';
 import { logger } from './logger';
+import { IncomingMessage } from 'http';
 
 // WebSocket handler interface
 export interface WebSocketHandler {
@@ -11,10 +12,18 @@ export interface WebSocketHandler {
   close(): Promise<void>;
 }
 
+// Interface for connection handlers
+interface ConnectionHandler {
+  (socket: any, request: IncomingMessage): void;
+}
+
 // Create a singleton WebSocketServer
-class WebSocketServer {
+// Rename to avoid the naming conflict with imported WebSocketServer
+class AppWebSocketServer {
   private wss: WSServer | null = null;
   private adapter: RedisWebSocketAdapter | null = null;
+  private connectionHandlers: ConnectionHandler[] = [];
+  private isInitialized = false;
   
   constructor() {
     if (typeof window === 'undefined') {
@@ -57,7 +66,7 @@ class WebSocketServer {
       }
       
       const adapter = createWebSocketAdapter(req, socket);
-      this.wss.handleUpgrade(adapter, socket, Buffer.from(''), (ws) => {
+      this.wss.handleUpgrade(adapter as any, socket, Buffer.from(''), (ws) => {
         this.wss!.emit('connection', ws, req);
       });
       
@@ -67,6 +76,111 @@ class WebSocketServer {
       return new Response('WebSocket error', { status: 500 });
     }
   }
+
+  // Initialize the WebSocket server
+  initialize(server: any) {
+    if (this.isInitialized) {
+      logger.warn('WebSocketServer already initialized');
+      return;
+    }
+
+    logger.info('Initializing WebSocket server');
+    
+    try {
+      // Create WebSocket server attached to HTTP server
+      this.wss = new WSServer({ 
+        noServer: true,
+        path: '/api/websocket'
+      });
+      
+      // Handle new connections
+      this.wss.on('connection', (socket, request) => {
+        logger.info(`WebSocket connection established: ${request.socket.remoteAddress}`);
+        
+        // Register message listener
+        socket.on('message', (message: Buffer) => {
+          try {
+            const data = JSON.parse(message.toString());
+            logger.debug(`WebSocket message received: ${JSON.stringify(data)}`);
+            
+            // Process message here if needed
+          } catch (error) {
+            logger.error('Error parsing WebSocket message', error);
+          }
+        });
+        
+        // Register close listener
+        socket.on('close', () => {
+          logger.info('WebSocket connection closed');
+        });
+        
+        // Call all registered connection handlers
+        this.connectionHandlers.forEach(handler => {
+          try {
+            handler(socket, request);
+          } catch (error) {
+            logger.error('Error in WebSocket connection handler', error);
+          }
+        });
+      });
+      
+      // Handle upgrade requests
+      server.on('upgrade', (request: IncomingMessage, socket: any, head: Buffer) => {
+        // Only handle WebSocket upgrades for our path
+        if (request.url?.startsWith('/api/websocket')) {
+          this.wss?.handleUpgrade(request, socket, head, (ws) => {
+            this.wss?.emit('connection', ws, request);
+          });
+        }
+      });
+      
+      // Mark as initialized
+      this.isInitialized = true;
+      logger.info('WebSocket server initialized successfully');
+    } catch (error) {
+      logger.error('Failed to initialize WebSocket server', error);
+      throw error;
+    }
+  }
+  
+  // Register a handler for new connections
+  onConnection(handler: ConnectionHandler) {
+    this.connectionHandlers.push(handler);
+  }
+  
+  // Broadcast a message to all connected clients
+  broadcast(message: any) {
+    if (!this.wss) {
+      logger.warn('WebSocketServer not initialized, cannot broadcast');
+      return false;
+    }
+    
+    const payload = typeof message === 'string' ? message : JSON.stringify(message);
+    
+    this.wss.clients.forEach(client => {
+      if (client.readyState === 1) { // WebSocket.OPEN
+        client.send(payload);
+      }
+    });
+    
+    return true;
+  }
+  
+  // Get the number of connected clients
+  getConnectionCount(): number {
+    return this.wss ? this.wss.clients.size : 0;
+  }
+  
+  // Close the WebSocket server
+  close() {
+    if (this.wss) {
+      this.wss.close();
+      this.wss = null;
+      this.isInitialized = false;
+      logger.info('WebSocket server closed');
+    }
+  }
 }
 
-export const WebSocketServer = new WebSocketServer(); 
+// Export singleton instance
+export const webSocketServer = new AppWebSocketServer(); 

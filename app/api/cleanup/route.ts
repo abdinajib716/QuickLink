@@ -1,34 +1,37 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Link from '@/lib/models/Link';
 import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
-export async function POST() {
+// This endpoint can be called by a Vercel Cron Job
+export async function GET(request: NextRequest) {
   try {
-    logger.info('Starting database cleanup operation');
+    logger.info('Running scheduled cleanup...');
+    
+    // Connect to database
     await connectDB();
     
-    // Option 1: Completely remove deleted links
-    const result = await Link.deleteMany({ deleted: true });
+    // Example: Delete links older than 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    // Option 2: Only keep deleted links for 30 days then remove them
-    // const thirtyDaysAgo = new Date();
-    // thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    // const result = await Link.deleteMany({ 
-    //   deleted: true,
-    //   updatedAt: { $lt: thirtyDaysAgo }
-    // });
+    const result = await Link.deleteMany({
+      createdAt: { $lt: thirtyDaysAgo }
+    });
     
-    logger.info(`Cleanup complete: removed ${result.deletedCount} links`);
+    logger.info(`Cleanup completed: deleted ${result.deletedCount} old links`);
     
     return NextResponse.json({
       success: true,
-      removed: result.deletedCount
+      message: `Cleanup completed: deleted ${result.deletedCount} old links`
     });
   } catch (error) {
-    logger.error('Error during cleanup operation:', error);
-    return NextResponse.json({ error: 'Cleanup failed' }, { status: 500 });
+    logger.error('Error during cleanup:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Cleanup operation failed' 
+    }, { status: 500 });
   }
 } 
