@@ -9,6 +9,10 @@
     "api/websocket": {
       "memory": 1024,
       "maxDuration": 10
+    },
+    "app/api/websocket/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
     }
   },
   "env": {

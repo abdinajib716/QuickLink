@@ -9,6 +9,14 @@ const nextConfig = {
     });
     return config;
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/websocket',
+        destination: '/app/api/websocket',
+      },
+    ];
+  }
 };
 
 export default nextConfig;
