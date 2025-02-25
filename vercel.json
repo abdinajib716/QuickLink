@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "rewrites": [
-    { "source": "/api/websocket", "destination": "/api/websocket" }
+    { "source": "/api/websocket", "destination": "/app/api/websocket" }
   ],
   "functions": {
     "app/api/websocket/**/*": {
