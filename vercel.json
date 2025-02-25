@@ -6,11 +6,7 @@
     { "source": "/api/websocket", "destination": "/api/websocket" }
   ],
   "functions": {
-    "api/websocket": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "app/api/websocket/route.ts": {
+    "app/api/websocket/**/*": {
       "memory": 1024,
       "maxDuration": 60
     }
