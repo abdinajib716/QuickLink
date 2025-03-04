@@ -4,6 +4,27 @@ const nextConfig = {
     MONGODB_URI: process.env.MONGODB_URI,
     REDIS_URL: process.env.REDIS_URL,
   },
+  images: {
+    domains: [
+      'www.youtube.com',
+      'youtube.com',
+      'www.google.com',
+      'google.com',
+      'github.com',
+      'raw.githubusercontent.com',
+      'avatars.githubusercontent.com',
+      'localhost',
+      'i.ytimg.com',
+      'cdn.shopify.com',
+      'openai.com',
+    ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals.push({

@@ -1,8 +1,10 @@
 'use client';
 
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileDown } from 'lucide-react';
+import { Download, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface LinkData {
   _id: string;
@@ -15,11 +17,25 @@ interface LinkData {
 
 interface ExportCsvButtonProps {
   links: LinkData[];
-  className?: string;
 }
 
-export function ExportCsvButton({ links, className = '' }: ExportCsvButtonProps) {
-  const generateCsv = () => {
+export function ExportCsvButton({ links }: ExportCsvButtonProps) {
+  const [isExporting, setIsExporting] = useState(false);
+  
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await generateCsv();
+      toast.success('Links exported successfully');
+    } catch (error) {
+      console.error('Failed to export links:', error);
+      toast.error('Failed to export links');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+  
+  const generateCsv = async () => {
     if (links.length === 0) {
       toast.error('No links to export');
       return;
@@ -91,19 +107,36 @@ export function ExportCsvButton({ links, className = '' }: ExportCsvButtonProps)
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    toast.success('CSV file exported successfully');
   };
   
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={generateCsv}
-      className={`flex items-center gap-1 ${className}`}
-    >
-      <FileDown className="h-4 w-4" />
-      Export CSV
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={isExporting || links.length === 0}
+            className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800 hover:border-green-300 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50 dark:hover:text-green-300"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Exporting...</span>
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="h-4 w-4" />
+                <span>Export CSV</span>
+              </>
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Export all links to CSV file</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

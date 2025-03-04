@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Copy, ExternalLink, Trash2, Globe } from 'lucide-react';
+import { Copy, ExternalLink, Trash2, Globe, CheckCircle2, Clock, Clipboard, ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from './confirm-dialog';
 import { formatDistanceToNow, format } from 'date-fns';
+import Image from 'next/image';
+import LinkIcon from './link-icon';
 
 interface LinkCardProps {
   link: {
@@ -108,41 +110,67 @@ export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
   const formattedDate = format(new Date(link.createdAt), 'MMM d, yyyy • h:mm a');
 
   return (
-    <Card className={`group relative overflow-hidden transition-all hover:shadow-lg dark:hover:shadow-primary/10 ${selected ? 'ring-2 ring-primary' : ''} ${isUsed || link.used ? 'border-l-4 border-l-green-500' : ''}`}>
+    <Card className={`group relative overflow-hidden transition-all hover:shadow-lg ${selected ? 'ring-2 ring-primary' : ''} ${
+      isUsed || link.used 
+        ? 'border-l-4 border-l-green-500 bg-green-50/30 dark:bg-green-950/10' 
+        : 'hover:border-l-4 hover:border-l-gray-200 dark:hover:border-l-gray-700'
+    }`}>
       <CardContent className="space-y-3 p-6 pb-16">
         <div className="flex items-start gap-3">
           {link.favicon ? (
-            <img 
-              src={link.favicon} 
-              alt="Site favicon" 
-              className="h-6 w-6 rounded-sm"
-              onError={(e) => (e.currentTarget.style.display = 'none')}
-            />
-          ) : (
-            <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-primary/10">
-              <Globe className="h-4 w-4 text-primary" />
+            <div className="w-6 h-6 relative">
+              <div className="absolute inset-0 bg-gray-100 rounded-sm flex items-center justify-center">
+                <LinkIcon className="h-5 w-5 text-muted-foreground" />
+              </div>
+              {/* Render the favicon with error handling */}
+              <img
+                src={link.favicon}
+                alt=""
+                width={24}
+                height={24}
+                className="rounded-sm relative z-10 w-full h-full object-contain"
+                onError={(e) => {
+                  // Hide broken image and show fallback
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
             </div>
+          ) : (
+            <LinkIcon className="h-6 w-6 text-muted-foreground mt-0.5" />
           )}
-          <div className="flex-1 space-y-1 overflow-hidden">
-            <h3 className="font-medium leading-none">
-              {link.title || hostname}
-            </h3>
-            <p className="text-sm text-muted-foreground truncate">
-              {hostname}
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-lg leading-tight text-foreground line-clamp-1">
+                {link.title || hostname}
+              </h3>
+              {selected && (
+                <CheckCircle2 className="h-5 w-5 text-primary" />
+              )}
+            </div>
+            <p className="text-sm text-foreground/80 line-clamp-2">
+              {link.description || hostname}
             </p>
+            <a 
+              href={link.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors line-clamp-1"
+            >
+              {link.url}
+            </a>
           </div>
         </div>
 
-        {link.description && (
-          <p className="text-sm text-foreground/90 line-clamp-2 leading-relaxed">
-            {link.description}
-          </p>
-        )}
-
         <div className="flex items-center justify-between border-t pt-2 mt-1 relative z-10">
-          <span className="text-sm font-medium text-foreground">
+          <span className="flex items-center text-sm font-medium text-foreground">
+            <Clock className="w-3 h-3 mr-1 text-muted-foreground" />
             Added {formatDistanceToNow(new Date(link.createdAt))} ago
-            {(isUsed || link.used) && <span className="ml-2 text-green-500 text-xs">(Used)</span>}
+            {(isUsed || link.used) && (
+              <span className="ml-2 inline-flex items-center text-green-600 text-xs font-medium">
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                Used
+              </span>
+            )}
           </span>
           <span className="text-sm font-mono bg-muted px-2 py-1 rounded text-foreground font-medium tabular-nums">
             {formattedDate}
@@ -150,36 +178,36 @@ export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
         </div>
       </CardContent>
 
-      <CardFooter className="absolute bottom-0 left-0 right-0 flex justify-end gap-2 border-t bg-background p-2">
+      <div className="absolute right-2 bottom-2 flex items-center gap-1">
         <Button
-          variant="ghost"
           size="icon"
-          className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+          variant="ghost"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background hover:shadow-sm"
           onClick={copyToClipboard}
+          title="Copy link"
         >
-          <Copy className="h-4 w-4" />
-          <span className="sr-only">Copy link</span>
+          {copied ? <ClipboardCheck className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
         </Button>
         <Button
-          variant="ghost"
           size="icon"
-          className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+          variant="ghost"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background hover:shadow-sm"
           onClick={handleOpenLink}
+          title="Open link"
         >
           <ExternalLink className="h-4 w-4" />
-          <span className="sr-only">Open link</span>
         </Button>
         <ConfirmDialog onConfirm={handleDelete}>
           <Button
-            variant="ghost"
             size="icon"
-            className="h-8 w-8 text-destructive opacity-0 transition-opacity hover:text-destructive/90 group-hover:opacity-100"
+            variant="ghost" 
+            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            title="Delete link"
           >
             <Trash2 className="h-4 w-4" />
-            <span className="sr-only">Delete link</span>
           </Button>
         </ConfirmDialog>
-      </CardFooter>
+      </div>
     </Card>
   );
 }

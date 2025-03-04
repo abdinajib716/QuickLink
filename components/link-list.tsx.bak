@@ -48,6 +48,7 @@ export function LinkList() {
   const [filterUsed, setFilterUsed] = useState<'all' | 'used' | 'unused'>('all');
   const [refreshKey, setRefreshKey] = useState(0);
   const [lastWebSocketUpdate, setLastWebSocketUpdate] = useState<Date | null>(null)
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const bulkDeleteRef = useRef<() => void>(() => {});
 
@@ -312,8 +313,7 @@ export function LinkList() {
   // Update the current time every minute
   useEffect(() => {
     const timer = setInterval(() => {
-      // Update refreshKey to force re-render and update displayed time
-      setRefreshKey(prev => prev + 1);
+      setCurrentTime(new Date());
     }, 60000);
     
     return () => clearInterval(timer);
