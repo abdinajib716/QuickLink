@@ -488,7 +488,13 @@ export function LinkList() {
               link={link}
               onDelete={handleDelete}
               selected={selectedLinks.includes(link._id)}
-              onSelect={() => setSelectedLinks(prev => [...prev, link._id])}
+              onSelect={() => {
+                setSelectedLinks(prev => 
+                  prev.includes(link._id)
+                    ? prev.filter(id => id !== link._id) // Remove if already selected
+                    : [...prev, link._id] // Add if not selected
+                );
+              }}
             />
           ))}
         </div>

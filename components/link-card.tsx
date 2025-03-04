@@ -22,9 +22,10 @@ interface LinkCardProps {
   };
   onDelete: (id: string) => void;
   selected?: boolean;
+  onSelect?: () => void;
 }
 
-export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
+export function LinkCard({ link, onDelete, selected = false, onSelect }: LinkCardProps) {
   const [copied, setCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   // Initialize isUsed from the link.used property to ensure consistency
@@ -110,11 +111,14 @@ export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
   const formattedDate = format(new Date(link.createdAt), 'MMM d, yyyy • h:mm a');
 
   return (
-    <Card className={`group relative overflow-hidden transition-all hover:shadow-lg ${selected ? 'ring-2 ring-primary' : ''} ${
-      isUsed || link.used 
-        ? 'border-l-4 border-l-green-500 bg-green-50/30 dark:bg-green-950/10' 
-        : 'hover:border-l-4 hover:border-l-gray-200 dark:hover:border-l-gray-700'
-    }`}>
+    <Card 
+      className={`group relative overflow-hidden transition-all hover:shadow-lg ${selected ? 'ring-2 ring-primary' : ''} ${
+        isUsed || link.used 
+          ? 'border-l-4 border-l-green-500 bg-green-50/30 dark:bg-green-950/10' 
+          : 'hover:border-l-4 hover:border-l-gray-200 dark:hover:border-l-gray-700'
+      }`}
+      onClick={() => onSelect && onSelect()}
+    >
       <CardContent className="space-y-3 p-6 pb-16">
         <div className="flex items-start gap-3">
           {link.favicon ? (
@@ -183,7 +187,10 @@ export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
           size="icon"
           variant="ghost"
           className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background hover:shadow-sm"
-          onClick={copyToClipboard}
+          onClick={(e) => {
+            e.stopPropagation();
+            copyToClipboard();
+          }}
           title="Copy link"
         >
           {copied ? <ClipboardCheck className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
@@ -192,7 +199,10 @@ export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
           size="icon"
           variant="ghost"
           className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background hover:shadow-sm"
-          onClick={handleOpenLink}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenLink();
+          }}
           title="Open link"
         >
           <ExternalLink className="h-4 w-4" />
@@ -202,6 +212,7 @@ export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
             size="icon"
             variant="ghost" 
             className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            onClick={(e) => e.stopPropagation()}
             title="Delete link"
           >
             <Trash2 className="h-4 w-4" />
