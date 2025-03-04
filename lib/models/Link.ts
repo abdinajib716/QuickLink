@@ -6,6 +6,7 @@ export interface ILink extends Document {
   description?: string;
   favicon?: string;
   deleted?: boolean;
+  used?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +37,11 @@ const LinkSchema = new Schema(
       default: false,
       index: true,
     },
+    used: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -44,7 +50,19 @@ const LinkSchema = new Schema(
         ret._id = ret._id.toString();
         if (ret.createdAt) ret.createdAt = new Date(ret.createdAt).toISOString();
         if (ret.updatedAt) ret.updatedAt = new Date(ret.updatedAt).toISOString();
+        // Ensure used field is explicitly included in the JSON
+        ret.used = Boolean(ret.used);
         delete ret.__v;
+        return ret;
+      }
+    },
+    toObject: {
+      transform: (doc, ret) => {
+        if (typeof ret._id !== 'string') {
+          ret._id = ret._id.toString();
+        }
+        // Ensure used field is explicitly included
+        ret.used = Boolean(ret.used);
         return ret;
       }
     }

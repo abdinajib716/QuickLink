@@ -28,11 +28,29 @@ export async function POST(request: NextRequest) {
   try {
     console.log('POST /api/links - Processing request...');
     const body = await request.json()
-    const { url, description } = body
+    let { url, description } = body
+    
+    // URL extraction logic
+    if (url) {
+      // Extract URL from mixed content using regex
+      const urlRegex = /(https?:\/\/[^\s,，。；;]+)/g;
+      const matches = url.match(urlRegex);
+      
+      if (matches && matches.length > 0) {
+        // Use the first valid URL found
+        url = matches[0];
+        console.log('POST /api/links - Extracted URL from content:', url);
+        
+        // If there was no separate description, use the original text as description
+        if (!description) {
+          description = body.url;
+        }
+      }
+    }
     
     if (!url) {
       console.error('POST /api/links - URL is required');
-      return NextResponse.json({ error: 'URL is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Valid URL is required' }, { status: 400 })
     }
     
     // Validate URL

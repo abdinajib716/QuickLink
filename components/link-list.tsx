@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Trash2, CheckSquare } from "lucide-react";
 import { ConfirmDialog } from './confirm-dialog';
+import { ExportCsvButton } from './export-csv-button';
 
 interface LinkData {
   _id: string
@@ -18,6 +19,7 @@ interface LinkData {
   description?: string
   title?: string
   favicon?: string
+  used?: boolean
   createdAt: string
 }
 
@@ -94,6 +96,20 @@ export function LinkList() {
             }
           })
         }
+        else if (parsedEvent.type === 'link_updated') {
+          // Handle link update (e.g., usage status change)
+          const updatedLink = parsedEvent.payload;
+          console.log('Received link update:', updatedLink);
+          
+          setLinks(prevLinks => {
+            // Using map to create a new array with the updated link
+            const newLinks = prevLinks.map(link => 
+              link._id === updatedLink._id ? { ...link, ...updatedLink } : link
+            );
+            console.log('Updated links state after update:', newLinks);
+            return newLinks;
+          });
+        }
         else if (parsedEvent.type === 'link_deleted') {
           const deletedId = parsedEvent.payload.id;
           
@@ -156,6 +172,16 @@ export function LinkList() {
       console.error('Error deleting link:', error);
     }
   }
+
+  // Check if a link has been refreshed from the API to ensure we have the latest data
+  useEffect(() => {
+    console.log('Current links data:', links);
+    
+    // Check for any links that should be marked as used
+    const hasUsedLinks = links.some(link => link.used);
+    console.log('Has used links:', hasUsedLinks);
+    
+  }, [links]);
 
   // Filter and sort links
   const filteredLinks = links.filter((link) => {
@@ -293,15 +319,18 @@ export function LinkList() {
         
         <div className="flex items-center gap-2">
           {filteredLinks.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleSelectAll}
-              className="flex items-center gap-1"
-            >
-              <CheckSquare className="h-4 w-4" />
-              {selectedLinks.size === filteredLinks.length ? "Deselect All" : "Select All"}
-            </Button>
+            <>
+              <ExportCsvButton links={filteredLinks} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleSelectAll}
+                className="flex items-center gap-1"
+              >
+                <CheckSquare className="h-4 w-4" />
+                {selectedLinks.size === filteredLinks.length ? "Deselect All" : "Select All"}
+              </Button>
+            </>
           )}
           
           {selectedLinks.size > 0 && (

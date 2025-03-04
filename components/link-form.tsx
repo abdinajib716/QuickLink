@@ -16,22 +16,43 @@ export function LinkForm({ onSuccess }: LinkFormProps) {
   const [url, setUrl] = useState('')
   const [description, setDescription] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
+  // Extract URL from mixed content
+  const extractUrl = (text: string): string | null => {
+    const urlRegex = /(https?:\/\/[^\s,，。；;]+)/g;
+    const matches = text.match(urlRegex);
+    return matches && matches.length > 0 ? matches[0] : null;
+  }
+
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    setUrl(inputValue);
+    
+    // Clear any previous errors when input changes
+    if (error) setError(null);
+  }
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     
-    if (!url) {
-      toast.error('Please enter a URL')
-      return
-    }
+    // Try to extract URL if one isn't clearly identified
+    let validUrl = url;
+    const extractedUrl = extractUrl(url);
     
-    // Basic URL validation
-    try {
-      new URL(url)
-    } catch (error) {
-      toast.error('Please enter a valid URL')
-      return
+    if (extractedUrl) {
+      validUrl = extractedUrl;
+      // If we extracted a URL that's different from the input,
+      // use the original input as description if no description was provided
+      if (validUrl !== url && !description) {
+        setDescription(url);
+      }
+    } else {
+      // Only show this error if no URL could be extracted
+      toast.error('No valid URL found in the input');
+      return;
     }
     
     setIsSubmitting(true)
@@ -42,11 +63,15 @@ export function LinkForm({ onSuccess }: LinkFormProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url, description }),
+        body: JSON.stringify({
+          url: validUrl,
+          description,
+        }),
       })
       
       if (!response.ok) {
-        throw new Error('Failed to save link')
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to save link')
       }
       
       // Reset form
@@ -59,9 +84,8 @@ export function LinkForm({ onSuccess }: LinkFormProps) {
       if (onSuccess) {
         onSuccess()
       }
-    } catch (error) {
-      console.error('Error saving link:', error)
-      toast.error('Failed to save link')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsSubmitting(false)
     }
@@ -72,30 +96,33 @@ export function LinkForm({ onSuccess }: LinkFormProps) {
       <CardHeader>
         <CardTitle>Save a new link</CardTitle>
       </CardHeader>
-      <form ref={formRef} onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="url">URL</Label>
-            <Input
-              id="url"
-              type="url"
-              placeholder="https://example.com"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              required
-            />
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="url">URL</Label>
+          <Input
+            id="url"
+            type="text"
+            placeholder="Enter or paste a URL or content containing a URL"
+            value={url}
+            onChange={handleUrlChange}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="description">Description (optional)</Label>
+          <Textarea
+            id="description"
+            placeholder="Add a description for this link"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+          />
+        </div>
+        {error && (
+          <div className="text-red-500 text-sm">
+            {error}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description (optional)</Label>
-            <Textarea
-              id="description"
-              placeholder="Add a description for this link"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-            />
-          </div>
-        </CardContent>
+        )}
         <CardFooter>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : 'Save Link'}

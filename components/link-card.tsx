@@ -16,6 +16,7 @@ interface LinkCardProps {
     createdAt: string;
     title?: string;
     favicon?: string;
+    used?: boolean;
   };
   onDelete: (id: string) => void;
   selected?: boolean;
@@ -24,7 +25,30 @@ interface LinkCardProps {
 export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
   const [copied, setCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Initialize isUsed from the link.used property to ensure consistency
+  const [isUsed, setIsUsed] = useState(Boolean(link.used));
   const hostname = new URL(link.url).hostname;
+
+  const markAsUsed = async () => {
+    if (isUsed) return; // If already marked as used, don't need to update
+    
+    try {
+      console.log(`Marking link ${link._id} as used`);
+      const response = await fetch(`/api/links/${link._id}/used`, {
+        method: 'PATCH',
+      });
+      
+      if (response.ok) {
+        console.log(`Successfully marked link ${link._id} as used`);
+        const updatedLink = await response.json();
+        console.log('Updated link data:', updatedLink);
+        setIsUsed(true);
+      }
+    } catch (error) {
+      console.error('Failed to mark link as used:', error);
+      // Continue anyway, not critical
+    }
+  };
 
   const copyToClipboard = async () => {
     try {
@@ -32,9 +56,18 @@ export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
       setCopied(true);
       toast.success('Link copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);
+      
+      // Mark as used when copied
+      markAsUsed();
     } catch (err) {
       toast.error('Failed to copy link');
     }
+  };
+
+  const handleOpenLink = () => {
+    window.open(link.url, '_blank');
+    // Mark as used when opened
+    markAsUsed();
   };
 
   const handleDelete = (e?: React.MouseEvent) => {
@@ -75,8 +108,8 @@ export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
   const formattedDate = format(new Date(link.createdAt), 'MMM d, yyyy • h:mm a');
 
   return (
-    <Card className={`group relative overflow-hidden transition-all hover:shadow-lg dark:hover:shadow-primary/10 ${selected ? 'ring-2 ring-primary' : ''}`}>
-      <CardContent className="space-y-3 p-6">
+    <Card className={`group relative overflow-hidden transition-all hover:shadow-lg dark:hover:shadow-primary/10 ${selected ? 'ring-2 ring-primary' : ''} ${isUsed || link.used ? 'border-l-4 border-l-green-500' : ''}`}>
+      <CardContent className="space-y-3 p-6 pb-16">
         <div className="flex items-start gap-3">
           {link.favicon ? (
             <img 
@@ -106,11 +139,12 @@ export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
           </p>
         )}
 
-        <div className="flex items-center justify-between border-t pt-2 mt-1">
-          <span className="text-xs font-medium text-muted-foreground">
+        <div className="flex items-center justify-between border-t pt-2 mt-1 relative z-10">
+          <span className="text-sm font-medium text-foreground">
             Added {formatDistanceToNow(new Date(link.createdAt))} ago
+            {(isUsed || link.used) && <span className="ml-2 text-green-500 text-xs">(Used)</span>}
           </span>
-          <span className="text-xs font-mono bg-muted px-2 py-1 rounded text-foreground tabular-nums">
+          <span className="text-sm font-mono bg-muted px-2 py-1 rounded text-foreground font-medium tabular-nums">
             {formattedDate}
           </span>
         </div>
@@ -130,7 +164,7 @@ export function LinkCard({ link, onDelete, selected = false }: LinkCardProps) {
           variant="ghost"
           size="icon"
           className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
-          onClick={() => window.open(link.url, '_blank')}
+          onClick={handleOpenLink}
         >
           <ExternalLink className="h-4 w-4" />
           <span className="sr-only">Open link</span>

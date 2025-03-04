@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { getRedisClient, publishMessage } from './redis-helper';
+import { getRedisClient, publishMessage, redisClient } from './redis-helper';
 import { logger } from './logger';
 
 // Ensure Redis is only imported on the server
@@ -39,14 +39,30 @@ class WebSocketBroadcaster {
       
       // Use the helper function to publish the message
       const serializedMessage = JSON.stringify(enhancedMessage);
-      const success = await publishMessage('websocket_messages', serializedMessage);
+      
+      // Try up to 3 times in case of connection issues
+      let success = false;
+      let attempts = 0;
+      
+      while (!success && attempts < 3) {
+        attempts++;
+        try {
+          success = await publishMessage('websocket_messages', serializedMessage);
+          if (success) break;
+          
+          // Short delay between retries
+          if (attempts < 3) await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (retryError) {
+          logger.warn(`Broadcast attempt ${attempts} failed, ${attempts < 3 ? 'retrying' : 'giving up'}`);
+        }
+      }
       
       const duration = logger.endTimer(`broadcast-${messageId}`);
       
       if (success) {
-        logger.info(`Message ${messageId} broadcast in ${duration.toFixed(2)}ms`);
+        logger.info(`Message ${messageId} broadcast in ${duration.toFixed(2)}ms (attempts: ${attempts})`);
       } else {
-        logger.warn(`Failed to broadcast message ${messageId}`);
+        logger.warn(`Failed to broadcast message ${messageId} after ${attempts} attempts`);
       }
       
       return messageId;
@@ -58,4 +74,4 @@ class WebSocketBroadcaster {
 }
 
 // Singleton instance
-export const broadcaster = new WebSocketBroadcaster(); 
+export const broadcaster = new WebSocketBroadcaster();

@@ -100,8 +100,16 @@ export async function getRedisClient(): Promise<Redis | null> {
     globalRedisClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
       maxRetriesPerRequest: 3,
       connectTimeout: 10000,
-      enableOfflineQueue: false,
+      enableOfflineQueue: true, // Change to true to queue commands when disconnected
       lazyConnect: false, // Connect immediately
+      reconnectOnError: (err) => {
+        const targetError = 'READONLY';
+        if (err.message.includes(targetError)) {
+          // Only reconnect on specific errors
+          return 1;
+        }
+        return false;
+      },
       retryStrategy: (times) => {
         const delay = Math.min(times * 200, 3000);
         logger.debug(`Redis retry attempt ${times}, delaying ${delay}ms`);
@@ -136,7 +144,12 @@ export async function publishMessage(channel: string, message: any): Promise<boo
   try {
     const redis = await getRedisClient();
     if (!redis) {
-      logger.warn(`Cannot publish to ${channel} - no Redis connection`);
+      logger.warn(`Cannot publish to ${channel} - no Redis connection, using fallback`);
+      // Instead of failing, use the MemoryStore as fallback
+      if (redisClient instanceof MemoryStore) {
+        await redisClient.publish(channel, typeof message === 'string' ? message : JSON.stringify(message));
+        return true;
+      }
       return false;
     }
     
@@ -145,6 +158,19 @@ export async function publishMessage(channel: string, message: any): Promise<boo
     return true;
   } catch (error) {
     logger.error(`Failed to publish to ${channel}`, error);
+    
+    // Use fallback in case of errors
+    try {
+      if (redisClient instanceof MemoryStore) {
+        const payload = typeof message === 'string' ? message : JSON.stringify(message);
+        await redisClient.publish(channel, payload);
+        logger.info(`Used MemoryStore fallback for publishing to ${channel}`);
+        return true;
+      }
+    } catch (fallbackError) {
+      logger.error('Fallback publishing also failed', fallbackError);
+    }
+    
     return false;
   }
 }
